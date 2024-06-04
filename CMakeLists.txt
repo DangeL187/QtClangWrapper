@@ -7,8 +7,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # MANUAL SETTING OF QT:
-set(QT_INSTALL_PATH D:/DEPS/QT/6.6.2/mingw_64)
-set(Qt6_DIR ${QT_INSTALL_PATH}/lib/cmake/Qt6)
+if (WIN32)
+    set(QT_INSTALL_PATH D:/DEPS/QT/6.6.2/mingw_64)  # Change this to your path to Qt
+    set(Qt6_DIR ${QT_INSTALL_PATH}/lib/cmake/Qt6)
+endif ()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 set(QT_LIBS Qt6::Core Qt6::Gui Qt6::Widgets)
