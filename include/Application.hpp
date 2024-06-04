@@ -20,16 +20,18 @@ public:
 
     void quit();
 
-    void setAsmOutput(const QString& text);
-    void setAsmVisible(bool value);
-    void setExecOutput(const QString& text);
-    void setExecVisible(bool value);
-    void setIrOutput(const QString& text);
-    void setIrVisible(bool value);
-    void setPrepOutput(const QString& text);
-    void setPrepVisible(bool value);
+    void appendAsmOutput(const QString& text);
+    void appendExecOutput(const QString& text);
+    void appendIrOutput(const QString& text);
+    void appendPrepOutput(const QString& text);
+    void clearOutputs();
+    void compile();
     void decreaseWorkspacesCount();
     void increaseWorkspacesCount();
+    void setAsmVisible(bool value);
+    void setExecVisible(bool value);
+    void setIrVisible(bool value);
+    void setPrepVisible(bool value);
 
     void updateSize(QSize size = {});
 

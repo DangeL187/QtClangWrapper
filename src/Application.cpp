@@ -12,12 +12,18 @@ Application::Application(int argc, char* argv[]): _application(argc, argv) {
     initLayout();
 
     _process = std::make_shared<Process>(this);
+}
 
-    // TODO: move to the "Run" button method:
-    _process->genPreprocessed();
-    _process->genIR();
-    _process->genAssembler();
-    _process->genExecutable();
+void Application::clearOutputs() {
+    _workspace_asm->clearText();
+    _workspace_exec->clearText();
+    _workspace_IR->clearText();
+    _workspace_prep->clearText();
+}
+
+void Application::compile() {
+    clearOutputs();
+    _process->compile();
 }
 
 void Application::decreaseWorkspacesCount() {
@@ -76,30 +82,34 @@ void Application::quit() { // TODO: might be deprecated
     QCoreApplication::quit();
 }
 
-void Application::setAsmOutput(const QString& text) {
-    _workspace_asm->setText(text);
+void Application::appendAsmOutput(const QString& text) {
+    _workspace_asm->appendText(text);
 }
+
+void Application::appendExecOutput(const QString& text) {
+    _workspace_exec->appendText(text);
+}
+
+void Application::appendIrOutput(const QString& text) {
+    _workspace_IR->appendText(text);
+}
+
+void Application::appendPrepOutput(const QString& text) {
+    _workspace_prep->appendText(text);
+}
+
 void Application::setAsmVisible(bool value) {
     _workspace_asm->setVisible(value);
 }
 
-void Application::setExecOutput(const QString& text) {
-    _workspace_exec->setText(text);
-}
 void Application::setExecVisible(bool value) {
     _workspace_exec->setVisible(value);
 }
 
-void Application::setIrOutput(const QString& text) {
-    _workspace_IR->setText(text);
-}
 void Application::setIrVisible(bool value) {
     _workspace_IR->setVisible(value);
 }
 
-void Application::setPrepOutput(const QString& text) {
-    _workspace_prep->setText(text);
-}
 void Application::setPrepVisible(bool value) {
     _workspace_prep->setVisible(value);
 }

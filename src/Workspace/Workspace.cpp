@@ -8,7 +8,16 @@ Workspace::Workspace(const QString& title) {
     initScrollArea();
     initLayout();
     updateLineNumbers();
+
     QObject::connect(&_text, &QPlainTextEdit::textChanged, this, &Workspace::updateLineNumbers);
+}
+
+void Workspace::appendText(const QString& text) {
+    _text.appendPlainText(text);
+}
+
+void Workspace::clearText() {
+    _text.clear();
 }
 
 void Workspace::initLayout() {
@@ -32,8 +41,10 @@ void Workspace::initLayout() {
     _text.document()->setDocumentMargin(0);
     _text.setStyleSheet("border: none");
     _text.setFont(_font);
+    _text.setStyleSheet("color: white");
 
     _title.setFont(_font);
+    _title.setStyleSheet("color: white");
 
     _layout = std::make_shared<QVBoxLayout>(&_scroll_area_widget);
     _layout->addWidget(&_title);
@@ -58,10 +69,6 @@ void Workspace::initScrollArea() {
     _scroll_area->setWidgetResizable(true);
     _scroll_area->setWidget(&_scroll_area_widget);
     _scroll_area->setStyleSheet("background-color: rgb(30, 30, 30)");
-}
-
-void Workspace::setText(const QString& text) {
-    _text.setPlainText(text);
 }
 
 void Workspace::updateLineNumbers() {

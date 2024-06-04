@@ -11,31 +11,52 @@ Process::Process(Application* parent): _parent(parent) {
 
     connect(this, &QProcess::readyReadStandardOutput, this, &Process::handleReadyRead);
     connect(this, &QProcess::readyReadStandardError, this, &Process::handleReadyRead);
+
+#ifdef _WIN32
+    _additional_toolchain = "--target=x86_64-w64-mingw64 "; // TODO: make customizable
+#endif
+}
+
+void Process::compile() {
+    _is_error = false;
+
+    genPreprocessed();
+    genIR();
+    if (_is_error) {
+        _parent->appendIrOutput("<Compilation failed>\n# For more information see the output window");
+        _parent->appendAsmOutput("<Compilation failed>\n# For more information see the output window");
+        return;
+    }
+    genAssembler();
+    genExecutable();
 }
 
 void Process::genAssembler() {
-    _output_workspace_id = 4;
-    runProcess("clang --target=x86_64-w64-mingw64 -S IR_code.ll -o assembler_code.s");
-    _parent->setAsmOutput(QString::fromStdString(readFile("../data/assembler_code.s")));
+    runProcess("clang", _additional_toolchain + "-S IR_code.ll -o assembler_code.s");
 }
 
-void Process::genExecutable() { // todo: flags
-    _output_workspace_id = 1;
-    runProcess("clang --target=x86_64-w64-mingw64 -c IR_code.ll -o object_file.o");
-    runProcess("clang --target=x86_64-w64-mingw64 object_file.o -o executable.exe -lstdc++ -static-libgcc");
-    runProcess("executable.exe");
+void Process::genExecutable() { // todo: compile options
+    QString extension = ".o";
+#ifdef _WIN32
+    extension = ".exe";
+#endif
+    runProcess("clang", _additional_toolchain + "-c IR_code.ll -o object_file.o");
+    runProcess("clang", _additional_toolchain + "object_file.o -o executable" + extension + " -lstdc++ -static-libgcc");
+
+#ifdef _WIN32
+    runProcess("executable" + extension);
+#endif
+#ifdef __linux__
+    runProcess("./executable" + extension);
+#endif
 }
 
 void Process::genIR() {
-    _output_workspace_id = 3;
-    runProcess("clang --target=x86_64-w64-mingw64 -S -emit-llvm preprocessed.cpp -o IR_code.ll");
-    _parent->setIrOutput(QString::fromStdString(readFile("../data/IR_code.ll")));
+    runProcess("clang", _additional_toolchain + "-S -emit-llvm preprocessed.cpp -o IR_code.ll");
 }
 
 void Process::genPreprocessed() {
-    _output_workspace_id = 2;
-    runProcess("clang --target=x86_64-w64-mingw64 -E source.cpp -o preprocessed.cpp");
-    _parent->setPrepOutput(QString::fromStdString(readFile("../data/preprocessed.cpp")));
+    runProcess("clang", _additional_toolchain + "-E source.cpp -o preprocessed.cpp");
 }
 
 void Process::handleReadyRead() {
@@ -43,13 +64,19 @@ void Process::handleReadyRead() {
     QString error = readAllStandardError();
     QString output = readAllStandardOutput();
 
-    if (output.isEmpty()) output = error;
-    output.replace("\r", "");
+    if (output.isEmpty()) {
+        output = error;
+        output.replace("\r", "");
+        output.chop(1);
+        _parent->appendExecOutput(output);
+        _is_error = true;
+        return;
+    }
 
-    if (_output_workspace_id == 1) _parent->setExecOutput(output);
-    else if (_output_workspace_id == 2) _parent->setPrepOutput(output);
-    else if (_output_workspace_id == 3) _parent->setIrOutput(output);
-    else if (_output_workspace_id == 4) _parent->setAsmOutput(output);
+    _parent->appendExecOutput(output);
+    _parent->appendPrepOutput(QString::fromStdString(readFile("../data/preprocessed.cpp")));
+    _parent->appendIrOutput(QString::fromStdString(readFile("../data/IR_code.ll")));
+    _parent->appendAsmOutput(QString::fromStdString(readFile("../data/assembler_code.s")));
 }
 
 std::string Process::readFile(const std::string& file_path) {
@@ -67,26 +94,21 @@ std::string Process::readFile(const std::string& file_path) {
     return output;
 }
 
-bool Process::runProcess(const QString& command) {
+bool Process::runProcess(const QString& command, const QString& args) {
     if (command.isEmpty()) return false;
 
     closeWriteChannel();
     close();
 
 #ifdef _WIN32
-    start("cmd", {"/s", "/v", "/c", command});
+    start("cmd", {"/s", "/v", "/c", command + " " + args});
 #endif
 #ifdef __linux__
-    long long space_index = command.indexOf(' ');
-    if (space_index != -1) {
-        _process->start(command.left(space_index), {command.mid(space_index + 1)});
-    } else {
-        _process->start(command);
-    }
+    start(command, args.split(" "));
 #endif
 
     if (!waitForStarted()) {
-        std::cout << "Error\n";
+        std::cerr << "Error:\n";
         return false;
     }
     waitForFinished();

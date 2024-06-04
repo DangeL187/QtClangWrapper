@@ -4,8 +4,10 @@
 
 Panel::Panel(Application* parent): _parent(parent) {
     initOptions();
+    initRunButton();
+
     initLayout();
-    setStyleSheet("background-color: rgb(68, 68, 68);");
+    setStyleSheet("color: white; background-color: rgb(68, 68, 68);");
     setMaximumHeight(QFrame::sizeHint().height());
 }
 
@@ -13,6 +15,7 @@ void Panel::initLayout() {
     _layout = std::make_shared<QHBoxLayout>(this);
     _layout->setContentsMargins(0, 0, 0, 0);
     _layout->addWidget(_view_selector.get());
+    _layout->addWidget(_run_button.get());
 }
 
 void Panel::initOptions() {
@@ -56,5 +59,14 @@ void Panel::initOptions() {
         }
 
         _parent->updateSize();
+    });
+}
+
+void Panel::initRunButton() {
+    _run_button = std::make_shared<QPushButton>(this);
+    _run_button->setText("Run");
+    _run_button->setStyleSheet("background-color: green");
+    connect(_run_button.get(), &QPushButton::clicked, this, [this](){
+        _parent->compile();
     });
 }

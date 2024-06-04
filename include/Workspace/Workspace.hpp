@@ -13,7 +13,8 @@ Q_OBJECT
 public:
     explicit Workspace(const QString& title);
 
-    void setText(const QString& text);
+    void appendText(const QString& text);
+    void clearText();
     void updateSize(const QSize& size);
 
 private:
