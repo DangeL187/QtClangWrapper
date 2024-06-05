@@ -1,7 +1,7 @@
 # QtClangWrapper
 UI Wrapper for Clang Compiler
 
-# Tasks
+# TODO
 * Disassembly View, Headers View, Metrics View for Windows
 * Compiler and linker args
 * Syntax Highlighter
