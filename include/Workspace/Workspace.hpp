@@ -1,12 +1,13 @@
 #ifndef QTCLANGWRAPPER_WORKSPACE_HPP
 #define QTCLANGWRAPPER_WORKSPACE_HPP
 
+#include <QFile>
 #include <QFrame>
-#include <QVBoxLayout>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QProcess>
 #include <QScrollArea>
+#include <QVBoxLayout>
 
 class Workspace: public QFrame {
 Q_OBJECT
@@ -15,6 +16,9 @@ public:
 
     void appendText(const QString& text);
     void clearText();
+    void loadFile();
+    void saveFile(QString file_path = "");
+    void setFilePath(const QString& file_path = "");
     void updateSize(const QSize& size);
 
 private:
@@ -29,10 +33,14 @@ private:
     /*==================== Workspace Related ===================*/
     QFont                           _font;
     QLabel                          _line_numbers;
+    QString                         _file_path;
     QPlainTextEdit                  _text;
     QLabel                          _title;
     /*==========================================================*/
 
+    void initFont();
+    void initText();
+    void initLineNumbers();
     void initLayout();
     void initScrollArea();
 

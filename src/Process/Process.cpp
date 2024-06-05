@@ -1,6 +1,7 @@
 #include "Process/Process.hpp"
 
-#include "Application.hpp"
+#include "Application/Application.hpp"
+#include "readFile.hpp"
 
 #include <iostream>
 
@@ -23,16 +24,37 @@ void Process::compile() {
     genPreprocessed();
     genIR();
     if (_is_error) {
-        _parent->appendIrOutput("<Compilation failed>\n# For more information see the output window");
         _parent->appendAsmOutput("<Compilation failed>\n# For more information see the output window");
+        _parent->appendDisasmOutput("<Compilation failed>\n# For more information see the output window");
+        _parent->appendHeadersOutput("<Compilation failed>\n# For more information see the output window");
+        _parent->appendIrOutput("<Compilation failed>\n# For more information see the output window");
+        _parent->appendMetricsOutput("<Compilation failed>\n# For more information see the output window");
         return;
     }
     genAssembler();
+    genObject();
+    genDisassembly();
+    genHeaders();
     genExecutable();
+    genMetrics();
+
+    _parent->appendAsmOutput(QString::fromStdString(readFile("../data/assembler_code.s")));
+    _parent->appendDisasmOutput(QString::fromStdString(readFile("../data/disassembly.txt")));
+    _parent->appendHeadersOutput(QString::fromStdString(readFile("../data/headers.txt")));
+    _parent->appendIrOutput(QString::fromStdString(readFile("../data/IR_code.ll")));
+    _parent->appendMetricsOutput(QString::fromStdString(readFile("../data/metrics.txt")));
+    _parent->appendPrepOutput(QString::fromStdString(readFile("../data/preprocessed.cpp")));
 }
 
 void Process::genAssembler() {
     runProcess("clang", _additional_toolchain + "-S IR_code.ll -o assembler_code.s");
+}
+
+void Process::genDisassembly() {
+#ifdef __linux__
+    //runProcess("objdump", "-d object_file.o > disassembly.txt"); // this command do not work with QProcess (idk why)
+    system("objdump -d ../data/object_file.o > ../data/disassembly.txt");
+#endif
 }
 
 void Process::genExecutable() { // todo: compile options
@@ -40,7 +62,6 @@ void Process::genExecutable() { // todo: compile options
 #ifdef _WIN32
     extension = ".exe";
 #endif
-    runProcess("clang", _additional_toolchain + "-c IR_code.ll -o object_file.o");
     runProcess("clang", _additional_toolchain + "object_file.o -o executable" + extension + " -lstdc++ -static-libgcc");
 
 #ifdef _WIN32
@@ -51,8 +72,26 @@ void Process::genExecutable() { // todo: compile options
 #endif
 }
 
+void Process::genHeaders() {
+#ifdef __linux__
+    // runProcess("readelf", "-h object_file.o > headers.txt"); // this command do not work with QProcess (idk why)
+    system("readelf -h ../data/object_file.o > ../data/headers.txt");
+#endif
+}
+
 void Process::genIR() {
     runProcess("clang", _additional_toolchain + "-S -emit-llvm preprocessed.cpp -o IR_code.ll");
+}
+
+void Process::genMetrics() {
+#ifdef __linux__
+    // runProcess("objdump", "-t executable.o > metrics.txt"); // this command do not work with QProcess (idk why)
+    system("objdump -t ../data/executable.o > ../data/metrics.txt");
+#endif
+}
+
+void Process::genObject() {
+    runProcess("clang", _additional_toolchain + "-c IR_code.ll -o object_file.o");
 }
 
 void Process::genPreprocessed() {
@@ -60,38 +99,20 @@ void Process::genPreprocessed() {
 }
 
 void Process::handleReadyRead() {
-    //std::string output = QString::fromLocal8Bit(_process->readAllStandardOutput()).toStdString(); // todo: might be deprecated
     QString error = readAllStandardError();
     QString output = readAllStandardOutput();
 
-    if (output.isEmpty()) {
+    if (!error.isEmpty()) {
         output = error;
         output.replace("\r", "");
         output.chop(1);
+        std::cout << "Error text: " << output.toStdString() << "\n";
         _parent->appendExecOutput(output);
         _is_error = true;
         return;
     }
 
     _parent->appendExecOutput(output);
-    _parent->appendPrepOutput(QString::fromStdString(readFile("../data/preprocessed.cpp")));
-    _parent->appendIrOutput(QString::fromStdString(readFile("../data/IR_code.ll")));
-    _parent->appendAsmOutput(QString::fromStdString(readFile("../data/assembler_code.s")));
-}
-
-std::string Process::readFile(const std::string& file_path) {
-    std::string output;
-
-    std::ifstream file(file_path);
-    if (!file.is_open()) return "File " + file_path + " not found";
-
-    std::string line;
-    while (std::getline(file, line)) {
-        output += line + "\n";
-    }
-    file.close();
-
-    return output;
 }
 
 bool Process::runProcess(const QString& command, const QString& args) {
@@ -108,7 +129,7 @@ bool Process::runProcess(const QString& command, const QString& args) {
 #endif
 
     if (!waitForStarted()) {
-        std::cerr << "Error:\n";
+        std::cerr << "Error!\n";
         return false;
     }
     waitForFinished();

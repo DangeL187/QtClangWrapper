@@ -1,6 +1,6 @@
-#include "Window.hpp"
+#include "Window/Window.hpp"
 
-#include "Application.hpp"
+#include "Application/Application.hpp"
 
 Window::Window(Application* parent): _parent(parent) {}
 

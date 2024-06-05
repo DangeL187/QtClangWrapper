@@ -2,7 +2,6 @@
 #define QTCLANGWRAPPER_PROCESS_HPP
 
 #include <chrono>
-#include <fstream>
 #include <memory>
 
 #include <QProcess>
@@ -20,10 +19,13 @@ private:
     Application*    _parent;
 
     void genAssembler();
+    void genDisassembly();
     void genExecutable();
-    void genPreprocessed();
+    void genHeaders();
     void genIR();
-    static std::string readFile(const std::string& file_path);
+    void genMetrics();
+    void genObject();
+    void genPreprocessed();
     bool runProcess(const QString& command, const QString& args = "");
 
 private slots:
