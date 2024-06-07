@@ -6,12 +6,12 @@
 #include "Workspace/Workspace.hpp"
 
 Application::Application(int argc, char* argv[]): _application(argc, argv) {
+    _process = std::make_shared<Process>(this);
+
     initPanel();
     initWorkspaces();
     initWindow();
     initLayout();
-
-    _process = std::make_shared<Process>(this);
 }
 
 void Application::appendAsmOutput(const QString& text) {
@@ -127,22 +127,26 @@ void Application::initWorkspaces() {
     _workspaces.addWidget(_workspace_metrics.get());
 }
 
-void Application::quit() { // TODO: might be deprecated
-    //stop?
-    QCoreApplication::quit();
-}
-
-#include <iostream>
-
 void Application::saveOutputFiles(const QString& folder_path) {
-    std::cout << (folder_path + "/preprocessed.cpp").toStdString() << "\n";
-    std::cout << (folder_path + "/IR_code.ll").toStdString() << "\n";
-    std::cout << (folder_path + "/assembler_code.s").toStdString() << "\n";
-    //_workspace_asm->saveFile(folder_path + "/")
+    _workspace_asm->saveFile(folder_path + "/assembler_code.s");
+    _workspace_disasm->saveFile(folder_path + "/disassembly.txt");
+    _workspace_exec->saveFile(folder_path + "/output.txt");
+    _workspace_headers->saveFile(folder_path + "/headers.txt");
+    _workspace_IR->saveFile(folder_path + "/IR_code.ll");
+    _workspace_metrics->saveFile(folder_path + "/metrics.txt");
+    _workspace_prep->saveFile(folder_path + "/preprocessed.cpp");
 }
 
 void Application::setAsmVisible(bool value) {
     _workspace_asm->setVisible(value);
+}
+
+void Application::setCompilerOptions(const QString& options) {
+    _process->setCompilerOptions(options);
+}
+
+void Application::setLinkerOptions(const QString& options) {
+    _process->setLinkerOptions(options);
 }
 
 void Application::setDisasmVisible(bool value) {
@@ -178,6 +182,8 @@ void Application::setSourceFile(const QString& file_path) {
 }
 
 void Application::updateSize(QSize size) {
+    if (_workspaces_count == 0) return;
+
     if (!size.isValid()) size = _window->size();
 
     for (int i = 0; i < _workspaces.count(); i++) {

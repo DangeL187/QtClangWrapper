@@ -2,6 +2,7 @@
 
 #include "Application/Application.hpp"
 #include "readFile.hpp"
+#include "Workspace/Highlighter.hpp"
 
 Workspace::Workspace(const QString& title) {
     _title.setText(title);
@@ -81,6 +82,8 @@ void Workspace::initText() {
     _text.setStyleSheet("border: none");
     _text.setFont(_font);
     _text.setStyleSheet("color: white");
+
+    _highlighter = std::make_shared<Highlighter>(_text.document());
 
     _title.setFont(_font);
     _title.setStyleSheet("color: white");

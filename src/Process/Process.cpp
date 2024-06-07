@@ -12,10 +12,6 @@ Process::Process(Application* parent): _parent(parent) {
 
     connect(this, &QProcess::readyReadStandardOutput, this, &Process::handleReadyRead);
     connect(this, &QProcess::readyReadStandardError, this, &Process::handleReadyRead);
-
-#ifdef _WIN32
-    _additional_toolchain = "--target=x86_64-w64-mingw64 "; // TODO: make customizable
-#endif
 }
 
 void Process::compile() {
@@ -34,35 +30,37 @@ void Process::compile() {
     genAssembler();
     genObject();
     genDisassembly();
-    genHeaders();
     genExecutable();
-    genMetrics();
+    genHeaders();
 
     _parent->appendAsmOutput(QString::fromStdString(readFile("../data/assembler_code.s")));
     _parent->appendDisasmOutput(QString::fromStdString(readFile("../data/disassembly.txt")));
     _parent->appendHeadersOutput(QString::fromStdString(readFile("../data/headers.txt")));
     _parent->appendIrOutput(QString::fromStdString(readFile("../data/IR_code.ll")));
-    _parent->appendMetricsOutput(QString::fromStdString(readFile("../data/metrics.txt")));
     _parent->appendPrepOutput(QString::fromStdString(readFile("../data/preprocessed.cpp")));
 }
 
 void Process::genAssembler() {
-    runProcess("clang", _additional_toolchain + "-S IR_code.ll -o assembler_code.s");
+    auto start_time = std::chrono::high_resolution_clock::now();
+    runProcess("clang", _args_compiler + "-S IR_code.ll -o assembler_code.s");
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Assembler generation finished in " + QString::number(time));
 }
 
 void Process::genDisassembly() {
-#ifdef __linux__
-    //runProcess("objdump", "-d object_file.o > disassembly.txt"); // this command do not work with QProcess (idk why)
-    system("objdump -d ../data/object_file.o > ../data/disassembly.txt");
-#endif
+    auto start_time = std::chrono::high_resolution_clock::now();
+    runProcess("objdump", "-d object_file.o", workingDirectory() + "/disassembly.txt");
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Disassembly generation finished in " + QString::number(time));
 }
 
-void Process::genExecutable() { // todo: compile options
+void Process::genExecutable() {
+    auto start_time = std::chrono::high_resolution_clock::now();
     QString extension = ".o";
 #ifdef _WIN32
     extension = ".exe";
 #endif
-    runProcess("clang", _additional_toolchain + "object_file.o -o executable" + extension + " -lstdc++ -static-libgcc");
+    runProcess("clang", _args_compiler + "object_file.o -o executable" + extension + " " + _args_linker);
 
 #ifdef _WIN32
     runProcess("executable" + extension);
@@ -70,32 +68,41 @@ void Process::genExecutable() { // todo: compile options
 #ifdef __linux__
     runProcess("./executable" + extension);
 #endif
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Executable generation finished in " + QString::number(time));
 }
 
 void Process::genHeaders() {
-#ifdef __linux__
-    // runProcess("readelf", "-h object_file.o > headers.txt"); // this command do not work with QProcess (idk why)
-    system("readelf -h ../data/object_file.o > ../data/headers.txt");
+    auto start_time = std::chrono::high_resolution_clock::now();
+#ifdef _WIN32
+    runProcess("objdump", "-x executable.exe", workingDirectory() + "/headers.txt");
 #endif
+#ifdef __linux__
+    runProcess("readelf", "-h object_file.o", workingDirectory() + "/headers.txt");
+#endif
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Headers generation finished in " + QString::number(time));
 }
 
 void Process::genIR() {
-    runProcess("clang", _additional_toolchain + "-S -emit-llvm preprocessed.cpp -o IR_code.ll");
-}
-
-void Process::genMetrics() {
-#ifdef __linux__
-    // runProcess("objdump", "-t executable.o > metrics.txt"); // this command do not work with QProcess (idk why)
-    system("objdump -t ../data/executable.o > ../data/metrics.txt");
-#endif
+    auto start_time = std::chrono::high_resolution_clock::now();
+    runProcess("clang", _args_compiler + "-S -emit-llvm preprocessed.cpp -o IR_code.ll");
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("IR code generation finished in " + QString::number(time));
 }
 
 void Process::genObject() {
-    runProcess("clang", _additional_toolchain + "-c IR_code.ll -o object_file.o");
+    auto start_time = std::chrono::high_resolution_clock::now();
+    runProcess("clang", _args_compiler + "-c IR_code.ll -o object_file.o");
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Object file generation finished in " + QString::number(time));
 }
 
 void Process::genPreprocessed() {
-    runProcess("clang", _additional_toolchain + "-E source.cpp -o preprocessed.cpp");
+    auto start_time = std::chrono::high_resolution_clock::now();
+    runProcess("clang", _args_compiler + "-E source.cpp -o preprocessed.cpp");
+    double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count();
+    _parent->appendMetricsOutput("Preprocessing finished in " + QString::number(time));
 }
 
 void Process::handleReadyRead() {
@@ -115,11 +122,13 @@ void Process::handleReadyRead() {
     _parent->appendExecOutput(output);
 }
 
-bool Process::runProcess(const QString& command, const QString& args) {
+bool Process::runProcess(const QString& command, const QString& args, const QString& output_file) {
     if (command.isEmpty()) return false;
 
     closeWriteChannel();
     close();
+
+    if (!output_file.isEmpty()) setStandardOutputFile(output_file);
 
 #ifdef _WIN32
     start("cmd", {"/s", "/v", "/c", command + " " + args});
@@ -133,5 +142,18 @@ bool Process::runProcess(const QString& command, const QString& args) {
         return false;
     }
     waitForFinished();
+    setStandardOutputFile(QString());
     return true;
+}
+
+void Process::setCompilerOptions(QString options) {
+    options = options.trimmed();
+    options.append(' ');
+    _args_compiler = options;
+}
+
+void Process::setLinkerOptions(QString options) {
+    options = options.trimmed();
+    options.append(' ');
+    _args_linker = options;
 }

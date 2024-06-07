@@ -9,6 +9,8 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+class Highlighter;
+
 class Workspace: public QFrame {
 Q_OBJECT
 public:
@@ -34,6 +36,7 @@ private:
     QFont                           _font;
     QLabel                          _line_numbers;
     QString                         _file_path;
+    std::shared_ptr<Highlighter>    _highlighter;
     QPlainTextEdit                  _text;
     QLabel                          _title;
     /*==========================================================*/

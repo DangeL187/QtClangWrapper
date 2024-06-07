@@ -1,9 +1,11 @@
 #include "Panel/Panel.hpp"
 
+#include "Panel/CustomComboBox.hpp"
 #include "Application/Application.hpp"
 
 Panel::Panel(Application* parent): _parent(parent) {
     initOptions();
+    initSelector();
     initRunButton();
     initOpenFileButton();
     initSaveButton();
@@ -19,6 +21,7 @@ void Panel::initLayout() {
     _layout->addWidget(_open_file_button.get());
     _layout->addWidget(_save_button.get());
     _layout->addWidget(_view_selector.get());
+    _layout->addWidget(_options.get());
     _layout->addWidget(_run_button.get());
 }
 
@@ -35,6 +38,43 @@ void Panel::initOpenFileButton() {
 }
 
 void Panel::initOptions() {
+    _options = std::make_shared<CustomComboBox>(this, _parent);
+#ifdef _WIN32
+    _options->addItem("--target=x86_64-w64-mingw64");
+#endif
+#ifdef __linux__
+    _options->addItem("-g");
+#endif
+    _options->addItem("-lstdc++ -static-libgcc");
+
+    _options->setItemData(0, "Compiler options", Qt::ToolTipRole);
+    _options->setItemData(1, "Linker options", Qt::ToolTipRole);
+
+    _parent->setCompilerOptions(_options->itemText(0));
+    _parent->setLinkerOptions(_options->itemText(1));
+}
+
+void Panel::initRunButton() {
+    _run_button = std::make_shared<QPushButton>(this);
+    _run_button->setText("Run");
+    _run_button->setStyleSheet("background-color: green");
+    connect(_run_button.get(), &QPushButton::clicked, this, [this](){
+        _parent->compile();
+    });
+}
+
+void Panel::initSaveButton() {
+    _save_button = std::make_shared<QPushButton>(this);
+    _save_button->setText("Save files");
+    _save_button->setStyleSheet("background-color: gray");
+    connect(_save_button.get(), &QPushButton::clicked, this, [this](){
+        QString folder_path = QFileDialog::getExistingDirectory(this, tr("Save in"),".",
+                                                                QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+        _parent->saveOutputFiles(folder_path);
+    });
+}
+
+void Panel::initSelector() {
     _view_selector = std::make_shared<QComboBox>(this);
 
     auto* model = new QStandardItemModel(this);
@@ -83,25 +123,5 @@ void Panel::initOptions() {
         }
 
         _parent->updateSize();
-    });
-}
-
-void Panel::initRunButton() {
-    _run_button = std::make_shared<QPushButton>(this);
-    _run_button->setText("Run");
-    _run_button->setStyleSheet("background-color: green");
-    connect(_run_button.get(), &QPushButton::clicked, this, [this](){
-        _parent->compile();
-    });
-}
-
-void Panel::initSaveButton() {
-    _save_button = std::make_shared<QPushButton>(this);
-    _save_button->setText("Save files");
-    _save_button->setStyleSheet("background-color: gray");
-    connect(_save_button.get(), &QPushButton::clicked, this, [this](){
-        QString folder_path = QFileDialog::getExistingDirectory(this, tr("Save in"),".",
-                                                                QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-        _parent->saveOutputFiles(folder_path);
     });
 }

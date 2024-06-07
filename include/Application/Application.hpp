@@ -18,8 +18,6 @@ class Application {
 public:
     Application(int argc, char* argv[]);
 
-    void quit();
-
     void appendAsmOutput(const QString& text);
     void appendDisasmOutput(const QString& text);
     void appendExecOutput(const QString& text);
@@ -41,6 +39,9 @@ public:
     void setMetricsVisible(bool value);
     void setPrepVisible(bool value);
     void setSourceFile(const QString& file_path);
+
+    void setCompilerOptions(const QString& options);
+    void setLinkerOptions(const QString& options);
 
     void updateSize(QSize size = {});
 
