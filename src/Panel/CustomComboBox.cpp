@@ -6,7 +6,7 @@ CustomComboBox::CustomComboBox(QWidget* parent, Application* application): QComb
     setEditable(true);
     connect(this->lineEdit(), &QLineEdit::editingFinished, this, &CustomComboBox::handleEditingFinished);
     connect(this, &QComboBox::currentIndexChanged, this, &CustomComboBox::handleCurrentIndexChanged);
-    setMaxCount(3);
+    setMaxCount(2);
 }
 
 void CustomComboBox::handleCurrentIndexChanged() {
